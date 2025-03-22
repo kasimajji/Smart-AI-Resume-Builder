@@ -48,3 +48,15 @@ export interface Resume {
   skills: Skill[];
   lastUpdated: string;
 }
+
+export interface CoverLetter {
+  id: string;
+  recipientName: string;
+  recipientTitle: string;
+  companyName: string;
+  companyAddress: string;
+  jobTitle: string;
+  resumeId: string;
+  content: string;
+  lastUpdated: string;
+}
