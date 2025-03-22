@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -29,8 +30,9 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useResumeStore } from '@/store/resumeStore';
 import { CoverLetterPreview } from './CoverLetterPreview';
+import { generateCoverLetter } from '@/lib/ai';
 import type { CoverLetter } from '@/types/resume.types';
-import { useState } from 'react';
+import { format } from 'date-fns';
 
 const coverLetterSchema = z.object({
   recipientName: z.string().min(2, 'Recipient name must be at least 2 characters'),
@@ -41,12 +43,14 @@ const coverLetterSchema = z.object({
   resumeId: z.string().min(1, 'Please select a resume'),
 });
 
-type CoverLetterForm = Omit<CoverLetter, 'id' | 'content' | 'lastUpdated'>;
+type CoverLetterForm = z.infer<typeof coverLetterSchema>;
 
 export function CoverLetterForm() {
   const { resumes, selectedResumeId, setSelectedResumeId } = useResumeStore();
   const { toast } = useToast();
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedContent, setGeneratedContent] = useState<string | null>(null);
 
   const form = useForm<CoverLetterForm>({
     resolver: zodResolver(coverLetterSchema),
@@ -60,13 +64,41 @@ export function CoverLetterForm() {
     },
   });
 
-  const onSubmit = (data: CoverLetterForm) => {
-    // TODO: Implement cover letter generation logic
-    toast({
-      title: 'Success',
-      description: 'Cover letter details saved successfully',
-    });
-    console.log('Cover letter form data:', data);
+  const onSubmit = async (data: CoverLetterForm) => {
+    try {
+      setIsGenerating(true);
+      const selectedResume = resumes.find((r) => r.id === data.resumeId);
+
+      if (!selectedResume) {
+        toast({
+          title: 'Error',
+          description: 'Please select a resume first',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const content = await generateCoverLetter({
+        ...data,
+        resume: selectedResume,
+      });
+
+      setGeneratedContent(content);
+      setPreviewOpen(true);
+
+      toast({
+        title: 'Success',
+        description: 'Cover letter generated successfully',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to generate cover letter',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -85,7 +117,12 @@ export function CoverLetterForm() {
                 <DialogTitle>Cover Letter Preview</DialogTitle>
               </DialogHeader>
               <div className="mt-4">
-                <CoverLetterPreview coverLetter={form.getValues()} />
+                <CoverLetterPreview 
+                  coverLetter={{
+                    ...form.getValues(),
+                    content: generatedContent || '',
+                  }} 
+                />
               </div>
             </DialogContent>
           </Dialog>
@@ -234,8 +271,9 @@ export function CoverLetterForm() {
               type="submit"
               className="w-full"
               data-testid="submit-button"
+              disabled={isGenerating}
             >
-              Generate Cover Letter
+              {isGenerating ? 'Generating Cover Letter...' : 'Generate Cover Letter'}
             </Button>
           </form>
         </Form>
