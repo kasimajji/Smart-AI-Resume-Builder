@@ -8,9 +8,10 @@ interface CoverLetterPreviewProps {
 }
 
 export function CoverLetterPreview({ coverLetter }: CoverLetterPreviewProps) {
-  const { resume } = useResumeStore();
+  const { resumes } = useResumeStore();
+  const selectedResume = resumes.find((r) => r.id === coverLetter.resumeId);
 
-  if (!resume) {
+  if (!selectedResume) {
     return (
       <div className="flex items-center justify-center h-96">
         <p className="text-muted-foreground">No resume data available</p>
@@ -25,10 +26,10 @@ export function CoverLetterPreview({ coverLetter }: CoverLetterPreviewProps) {
       <div className="space-y-8">
         {/* Sender's Information */}
         <div className="text-right">
-          <p>{resume.contactInfo.fullName}</p>
-          <p>{resume.contactInfo.email}</p>
-          <p>{resume.contactInfo.phone}</p>
-          <p>{resume.contactInfo.location}</p>
+          <p>{selectedResume.contactInfo.fullName}</p>
+          <p>{selectedResume.contactInfo.email}</p>
+          <p>{selectedResume.contactInfo.phone}</p>
+          <p>{selectedResume.contactInfo.location}</p>
         </div>
 
         {/* Date */}
@@ -53,14 +54,14 @@ export function CoverLetterPreview({ coverLetter }: CoverLetterPreviewProps) {
         <div className="space-y-4">
           <p>
             I am writing to express my strong interest in the {coverLetter.jobTitle} position
-            at {coverLetter.companyName}. With my background in {resume.workExperience[0]?.position || 'software development'} and
-            experience at {resume.workExperience[0]?.company || 'leading technology companies'}, I am confident in my ability to
+            at {coverLetter.companyName}. With my background in {selectedResume.workExperience[0]?.position || 'software development'} and
+            experience at {selectedResume.workExperience[0]?.company || 'leading technology companies'}, I am confident in my ability to
             contribute significantly to your team.
           </p>
 
           <p>
-            Throughout my career at {resume.workExperience[0]?.company || 'previous companies'}, I have
-            developed expertise in {resume.skills.slice(0, 3).map(skill => skill.name).join(', ')}.
+            Throughout my career at {selectedResume.workExperience[0]?.company || 'previous companies'}, I have
+            developed expertise in {selectedResume.skills.slice(0, 3).map(skill => skill.name).join(', ')}.
             This combination of skills and experience makes me particularly well-suited for the
             {coverLetter.jobTitle} role.
           </p>
@@ -80,7 +81,7 @@ export function CoverLetterPreview({ coverLetter }: CoverLetterPreviewProps) {
           </p>
 
           <p>Sincerely,</p>
-          <p>{resume.contactInfo.fullName}</p>
+          <p>{selectedResume.contactInfo.fullName}</p>
         </div>
       </div>
     </Card>

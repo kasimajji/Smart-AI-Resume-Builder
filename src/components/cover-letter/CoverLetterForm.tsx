@@ -44,7 +44,7 @@ const coverLetterSchema = z.object({
 type CoverLetterForm = Omit<CoverLetter, 'id' | 'content' | 'lastUpdated'>;
 
 export function CoverLetterForm() {
-  const { resume } = useResumeStore();
+  const { resumes, selectedResumeId, setSelectedResumeId } = useResumeStore();
   const { toast } = useToast();
   const [previewOpen, setPreviewOpen] = useState(false);
 
@@ -56,7 +56,7 @@ export function CoverLetterForm() {
       companyName: '',
       companyAddress: '',
       jobTitle: '',
-      resumeId: resume?.id || '',
+      resumeId: selectedResumeId || '',
     },
   });
 
@@ -98,6 +98,48 @@ export function CoverLetterForm() {
             className="space-y-6"
             data-testid="cover-letter-form"
           >
+            <FormField
+              control={form.control}
+              name="resumeId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Select Resume</FormLabel>
+                  <Select
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      setSelectedResumeId(value);
+                    }}
+                    defaultValue={field.value}
+                    data-testid="resume-select"
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a resume" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {resumes.length > 0 ? (
+                        resumes.map((resume) => (
+                          <SelectItem
+                            key={resume.id}
+                            value={resume.id}
+                            data-testid={`resume-option-${resume.id}`}
+                          >
+                            {resume.contactInfo.fullName}'s Resume ({format(new Date(resume.lastUpdated), 'MMM d, yyyy')})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>
+                          No resumes available
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="recipientName"
@@ -183,39 +225,6 @@ export function CoverLetterForm() {
                       data-testid="job-title-input"
                     />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="resumeId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Select Resume</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    data-testid="resume-select"
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose a resume" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {resume ? (
-                        <SelectItem value={resume.id}>
-                          {resume.contactInfo.fullName}'s Resume
-                        </SelectItem>
-                      ) : (
-                        <SelectItem value="" disabled>
-                          No resumes available
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

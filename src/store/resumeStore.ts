@@ -1,129 +1,292 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Resume } from '@/types/resume.types';
+import type { Resume, ContactInfo, WorkExperience, Education, Skill } from '@/types/resume.types';
 
-interface ResumeStore {
-  resume: Resume | null;
-  setResume: (resume: Resume) => void;
-  updateContactInfo: (contactInfo: Resume['contactInfo']) => void;
-  addWorkExperience: (experience: Omit<Resume['workExperience'][0], 'id'>) => void;
-  updateWorkExperience: (id: string, experience: Partial<Resume['workExperience'][0]>) => void;
+const emptyContactInfo: ContactInfo = {
+  fullName: '',
+  email: '',
+  phone: '',
+  location: '',
+  website: '',
+  linkedin: '',
+};
+
+const emptyResume: Omit<Resume, 'id' | 'lastUpdated'> = {
+  contactInfo: emptyContactInfo,
+  workExperience: [],
+  education: [],
+  skills: [],
+};
+
+interface ResumeState {
+  resumes: Resume[];
+  selectedResumeId: string | null;
+}
+
+interface ResumeActions {
+  // Resume CRUD
+  createResume: () => void;
+  updateResume: (id: string, resume: Partial<Resume>) => void;
+  deleteResume: (id: string) => void;
+  
+  // Resume Selection
+  setSelectedResumeId: (id: string | null) => void;
+  getSelectedResume: () => Resume | null;
+  
+  // Contact Info
+  updateContactInfo: (contactInfo: ContactInfo) => void;
+  
+  // Work Experience
+  addWorkExperience: (experience: Omit<WorkExperience, 'id'>) => void;
+  updateWorkExperience: (id: string, experience: Partial<WorkExperience>) => void;
   removeWorkExperience: (id: string) => void;
-  addEducation: (education: Omit<Resume['education'][0], 'id'>) => void;
-  updateEducation: (id: string, education: Partial<Resume['education'][0]>) => void;
+  
+  // Education
+  addEducation: (education: Omit<Education, 'id'>) => void;
+  updateEducation: (id: string, education: Partial<Education>) => void;
   removeEducation: (id: string) => void;
-  addSkill: (skill: Omit<Resume['skills'][0], 'id'>) => void;
-  updateSkill: (id: string, skill: Partial<Resume['skills'][0]>) => void;
+  
+  // Skills
+  addSkill: (skill: Omit<Skill, 'id'>) => void;
+  updateSkill: (id: string, skill: Partial<Skill>) => void;
   removeSkill: (id: string) => void;
 }
 
+type ResumeStore = ResumeState & ResumeActions;
+
 export const useResumeStore = create<ResumeStore>()(
   persist(
-    (set) => ({
-      resume: null,
-      setResume: (resume) => set({ resume }),
-      updateContactInfo: (contactInfo) =>
+    (set, get) => ({
+      // Initial State
+      resumes: [],
+      selectedResumeId: null,
+
+      // Resume CRUD
+      createResume: () => {
+        const newResume: Resume = {
+          ...emptyResume,
+          id: crypto.randomUUID(),
+          lastUpdated: new Date().toISOString(),
+        };
+
         set((state) => ({
-          resume: state.resume ? { ...state.resume, contactInfo } : null,
-        })),
-      addWorkExperience: (experience) =>
+          resumes: [...state.resumes, newResume],
+          selectedResumeId: newResume.id,
+        }));
+      },
+
+      updateResume: (id, resume) =>
         set((state) => ({
-          resume: state.resume
-            ? {
-                ...state.resume,
-                workExperience: [
-                  ...state.resume.workExperience,
-                  { ...experience, id: crypto.randomUUID() },
-                ],
-              }
-            : null,
+          resumes: state.resumes.map((r) =>
+            r.id === id
+              ? { ...r, ...resume, lastUpdated: new Date().toISOString() }
+              : r
+          ),
         })),
-      updateWorkExperience: (id, experience) =>
+
+      deleteResume: (id) =>
         set((state) => ({
-          resume: state.resume
-            ? {
-                ...state.resume,
-                workExperience: state.resume.workExperience.map((exp) =>
-                  exp.id === id ? { ...exp, ...experience } : exp
-                ),
-              }
-            : null,
+          resumes: state.resumes.filter((r) => r.id !== id),
+          selectedResumeId: state.selectedResumeId === id ? null : state.selectedResumeId,
         })),
-      removeWorkExperience: (id) =>
+
+      // Resume Selection
+      setSelectedResumeId: (id) => set({ selectedResumeId: id }),
+
+      getSelectedResume: () => {
+        const state = get();
+        return state.resumes.find((r) => r.id === state.selectedResumeId) || null;
+      },
+
+      // Contact Info
+      updateContactInfo: (contactInfo) => {
+        const state = get();
+        if (!state.selectedResumeId) return;
+
         set((state) => ({
-          resume: state.resume
-            ? {
-                ...state.resume,
-                workExperience: state.resume.workExperience.filter(
-                  (exp) => exp.id !== id
-                ),
-              }
-            : null,
-        })),
-      addEducation: (education) =>
+          resumes: state.resumes.map((r) =>
+            r.id === state.selectedResumeId
+              ? {
+                  ...r,
+                  contactInfo,
+                  lastUpdated: new Date().toISOString(),
+                }
+              : r
+          ),
+        }));
+      },
+
+      // Work Experience
+      addWorkExperience: (experience) => {
+        const state = get();
+        if (!state.selectedResumeId) return;
+
         set((state) => ({
-          resume: state.resume
-            ? {
-                ...state.resume,
-                education: [
-                  ...state.resume.education,
-                  { ...education, id: crypto.randomUUID() },
-                ],
-              }
-            : null,
-        })),
-      updateEducation: (id, education) =>
+          resumes: state.resumes.map((r) =>
+            r.id === state.selectedResumeId
+              ? {
+                  ...r,
+                  workExperience: [
+                    ...r.workExperience,
+                    { ...experience, id: crypto.randomUUID() },
+                  ],
+                  lastUpdated: new Date().toISOString(),
+                }
+              : r
+          ),
+        }));
+      },
+
+      updateWorkExperience: (id, experience) => {
+        const state = get();
+        if (!state.selectedResumeId) return;
+
         set((state) => ({
-          resume: state.resume
-            ? {
-                ...state.resume,
-                education: state.resume.education.map((edu) =>
-                  edu.id === id ? { ...edu, ...education } : edu
-                ),
-              }
-            : null,
-        })),
-      removeEducation: (id) =>
+          resumes: state.resumes.map((r) =>
+            r.id === state.selectedResumeId
+              ? {
+                  ...r,
+                  workExperience: r.workExperience.map((exp) =>
+                    exp.id === id ? { ...exp, ...experience } : exp
+                  ),
+                  lastUpdated: new Date().toISOString(),
+                }
+              : r
+          ),
+        }));
+      },
+
+      removeWorkExperience: (id) => {
+        const state = get();
+        if (!state.selectedResumeId) return;
+
         set((state) => ({
-          resume: state.resume
-            ? {
-                ...state.resume,
-                education: state.resume.education.filter((edu) => edu.id !== id),
-              }
-            : null,
-        })),
-      addSkill: (skill) =>
+          resumes: state.resumes.map((r) =>
+            r.id === state.selectedResumeId
+              ? {
+                  ...r,
+                  workExperience: r.workExperience.filter((exp) => exp.id !== id),
+                  lastUpdated: new Date().toISOString(),
+                }
+              : r
+          ),
+        }));
+      },
+
+      // Education
+      addEducation: (education) => {
+        const state = get();
+        if (!state.selectedResumeId) return;
+
         set((state) => ({
-          resume: state.resume
-            ? {
-                ...state.resume,
-                skills: [...state.resume.skills, { ...skill, id: crypto.randomUUID() }],
-              }
-            : null,
-        })),
-      updateSkill: (id, skill) =>
+          resumes: state.resumes.map((r) =>
+            r.id === state.selectedResumeId
+              ? {
+                  ...r,
+                  education: [
+                    ...r.education,
+                    { ...education, id: crypto.randomUUID() },
+                  ],
+                  lastUpdated: new Date().toISOString(),
+                }
+              : r
+          ),
+        }));
+      },
+
+      updateEducation: (id, education) => {
+        const state = get();
+        if (!state.selectedResumeId) return;
+
         set((state) => ({
-          resume: state.resume
-            ? {
-                ...state.resume,
-                skills: state.resume.skills.map((s) =>
-                  s.id === id ? { ...s, ...skill } : s
-                ),
-              }
-            : null,
-        })),
-      removeSkill: (id) =>
+          resumes: state.resumes.map((r) =>
+            r.id === state.selectedResumeId
+              ? {
+                  ...r,
+                  education: r.education.map((edu) =>
+                    edu.id === id ? { ...edu, ...education } : edu
+                  ),
+                  lastUpdated: new Date().toISOString(),
+                }
+              : r
+          ),
+        }));
+      },
+
+      removeEducation: (id) => {
+        const state = get();
+        if (!state.selectedResumeId) return;
+
         set((state) => ({
-          resume: state.resume
-            ? {
-                ...state.resume,
-                skills: state.resume.skills.filter((s) => s.id !== id),
-              }
-            : null,
-        })),
+          resumes: state.resumes.map((r) =>
+            r.id === state.selectedResumeId
+              ? {
+                  ...r,
+                  education: r.education.filter((edu) => edu.id !== id),
+                  lastUpdated: new Date().toISOString(),
+                }
+              : r
+          ),
+        }));
+      },
+
+      // Skills
+      addSkill: (skill) => {
+        const state = get();
+        if (!state.selectedResumeId) return;
+
+        set((state) => ({
+          resumes: state.resumes.map((r) =>
+            r.id === state.selectedResumeId
+              ? {
+                  ...r,
+                  skills: [...r.skills, { ...skill, id: crypto.randomUUID() }],
+                  lastUpdated: new Date().toISOString(),
+                }
+              : r
+          ),
+        }));
+      },
+
+      updateSkill: (id, skill) => {
+        const state = get();
+        if (!state.selectedResumeId) return;
+
+        set((state) => ({
+          resumes: state.resumes.map((r) =>
+            r.id === state.selectedResumeId
+              ? {
+                  ...r,
+                  skills: r.skills.map((s) =>
+                    s.id === id ? { ...s, ...skill } : s
+                  ),
+                  lastUpdated: new Date().toISOString(),
+                }
+              : r
+          ),
+        }));
+      },
+
+      removeSkill: (id) => {
+        const state = get();
+        if (!state.selectedResumeId) return;
+
+        set((state) => ({
+          resumes: state.resumes.map((r) =>
+            r.id === state.selectedResumeId
+              ? {
+                  ...r,
+                  skills: r.skills.filter((s) => s.id !== id),
+                  lastUpdated: new Date().toISOString(),
+                }
+              : r
+          ),
+        }));
+      },
     }),
     {
       name: 'resume-storage',
+      version: 1,
     }
   )
 );
