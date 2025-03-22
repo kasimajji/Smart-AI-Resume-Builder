@@ -6,47 +6,23 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Upload, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { Upload, AlertCircle, CheckCircle2, XCircle, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { analyzeResume } from '@/lib/api';
 
-interface ATSFeedback {
+interface ATSAnalysisResult {
   score: number;
-  issues: {
-    severity: 'error' | 'warning' | 'success';
+  feedback: {
+    type: 'success' | 'warning' | 'error' | 'info';
     message: string;
   }[];
-  suggestions: string[];
+  keywords: string[];
 }
-
-const mockATSAnalysis = (fileName: string): ATSFeedback => ({
-  score: Math.floor(Math.random() * 30) + 70, // Random score between 70-100
-  issues: [
-    {
-      severity: 'error',
-      message: 'Complex formatting detected - tables or columns may not parse correctly',
-    },
-    {
-      severity: 'warning',
-      message: 'Some keywords from the job description are missing',
-    },
-    {
-      severity: 'success',
-      message: 'Contact information is clearly formatted and parseable',
-    },
-  ],
-  suggestions: [
-    'Use standard section headings (e.g., "Work Experience", "Education")',
-    'Avoid tables, columns, and text boxes',
-    'Include more industry-specific keywords',
-    'Use standard bullet points for lists',
-    'Ensure all dates are in a consistent format (MM/YYYY)',
-  ],
-});
 
 export function ATSChecker() {
   const [file, setFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [results, setResults] = useState<ATSFeedback | null>(null);
+  const [results, setResults] = useState<ATSAnalysisResult | null>(null);
   const { toast } = useToast();
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -77,22 +53,39 @@ export function ATSChecker() {
   const handleAnalyze = async (fileToAnalyze: File) => {
     setIsAnalyzing(true);
     
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    
-    const analysis = mockATSAnalysis(fileToAnalyze.name);
-    setResults(analysis);
-    setIsAnalyzing(false);
+    try {
+      const analysis = await analyzeResume(fileToAnalyze);
+      setResults(analysis);
+      
+      if (analysis.score < 70) {
+        toast({
+          title: 'Low ATS Score',
+          description: 'Your resume might need improvements to pass ATS systems',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Analysis Failed',
+        description: error instanceof Error ? error.message : 'Failed to analyze resume',
+        variant: 'destructive',
+      });
+      setResults(null);
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
-  const getSeverityIcon = (severity: 'error' | 'warning' | 'success') => {
-    switch (severity) {
+  const getSeverityIcon = (type: 'success' | 'warning' | 'error' | 'info') => {
+    switch (type) {
       case 'error':
         return <XCircle className="h-5 w-5 text-destructive" />;
       case 'warning':
         return <AlertCircle className="h-5 w-5 text-yellow-500" />;
       case 'success':
         return <CheckCircle2 className="h-5 w-5 text-green-500" />;
+      case 'info':
+        return <Info className="h-5 w-5 text-blue-500" />;
     }
   };
 
@@ -166,27 +159,30 @@ export function ATSChecker() {
             <div>
               <h3 className="text-lg font-semibold mb-4">Analysis Results</h3>
               <div className="space-y-3">
-                {results.issues.map((issue, index) => (
+                {results.feedback.map((item, index) => (
                   <div key={index} className="flex items-start gap-2">
-                    {getSeverityIcon(issue.severity)}
-                    <p className="text-sm">{issue.message}</p>
+                    {getSeverityIcon(item.type)}
+                    <p className="text-sm">{item.message}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            <Separator />
-
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Suggestions for Improvement</h3>
-              <div className="flex flex-wrap gap-2">
-                {results.suggestions.map((suggestion, index) => (
-                  <Badge key={index} variant="secondary">
-                    {suggestion}
-                  </Badge>
-                ))}
-              </div>
-            </div>
+            {results.keywords.length > 0 && (
+              <>
+                <Separator />
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Keywords Found</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {results.keywords.map((keyword, index) => (
+                      <Badge key={index} variant="secondary">
+                        {keyword}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
       </CardContent>
