@@ -19,9 +19,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useResumeStore } from '@/store/resumeStore';
+import { CoverLetterPreview } from './CoverLetterPreview';
 import type { CoverLetter } from '@/types/resume.types';
+import { useState } from 'react';
 
 const coverLetterSchema = z.object({
   recipientName: z.string().min(2, 'Recipient name must be at least 2 characters'),
@@ -37,6 +46,7 @@ type CoverLetterForm = Omit<CoverLetter, 'id' | 'content' | 'lastUpdated'>;
 export function CoverLetterForm() {
   const { resume } = useResumeStore();
   const { toast } = useToast();
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const form = useForm<CoverLetterForm>({
     resolver: zodResolver(coverLetterSchema),
@@ -62,7 +72,24 @@ export function CoverLetterForm() {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="text-2xl">Cover Letter Details</CardTitle>
+        <div className="flex justify-between items-center">
+          <CardTitle className="text-2xl">Cover Letter Details</CardTitle>
+          <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" data-testid="preview-button">
+                Preview Cover Letter
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Cover Letter Preview</DialogTitle>
+              </DialogHeader>
+              <div className="mt-4">
+                <CoverLetterPreview coverLetter={form.getValues()} />
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </CardHeader>
       <CardContent>
         <Form {...form}>
