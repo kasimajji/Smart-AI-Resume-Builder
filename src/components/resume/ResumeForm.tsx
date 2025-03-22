@@ -12,6 +12,7 @@ import { ContactInfo } from './ContactInfo';
 import { WorkExperience } from './WorkExperience';
 import { Education } from './Education';
 import { Skills } from './Skills';
+import { ResumePreview } from './ResumePreview';
 import { useResumeStore } from '@/store/resumeStore';
 
 /**
@@ -33,14 +34,12 @@ export function ResumeForm() {
                 Preview Resume
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Resume Preview</DialogTitle>
               </DialogHeader>
               <div className="mt-4">
-                <pre className="bg-muted p-4 rounded-lg overflow-x-auto whitespace-pre-wrap">
-                  {JSON.stringify(resume, null, 2)}
-                </pre>
+                <ResumePreview resume={resume} />
               </div>
             </DialogContent>
           </Dialog>
